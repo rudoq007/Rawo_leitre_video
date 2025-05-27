@@ -1,0 +1,127 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Road Video Map with Draggable Marker Sync</title>
+  <meta charset="utf-8" />
+  <style>
+    body { margin: 0; padding: 0; display: flex; height: 100vh; font-family: Arial, sans-serif; }
+    #map { width: 60%; height: 100%; position: relative; }
+    #video { width: 40%; height: 100%; }
+    iframe { width: 100%; height: 100%; border: none; }
+    #infoBox {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255,255,255,0.9);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    }
+  </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+</head>
+<body>
+  <div id="map">
+    <div id="infoBox">
+      <strong>Speed & Distance</strong><br>
+      Distance: <span id="dist">0.00</span> km<br>
+      Speed: <span id="speed">0.00</span> km/h
+    </div>
+  </div>
+  <div id="video">
+    <iframe id="ytplayer" type="text/html"
+      src="https://www.youtube.com/embed/38JummjZeAs?enablejsapi=1&rel=0"
+      frameborder="0" allowfullscreen></iframe>
+  </div>
+
+  <script>
+    let map = L.map('map').setView([-2.85, 141.55], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    let routeData, marker, polyline, player, currentVideo = 1, latlngs = [];
+
+    fetch('synced_route_speed.geojson')
+      .then(res => res.json())
+      .then(data => {
+        routeData = data.features;
+        latlngs = routeData.map(f => [f.geometry.coordinates[1], f.geometry.coordinates[0]]);
+        polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
+
+        marker = L.marker(latlngs[0], { draggable: true }).addTo(map);
+
+        marker.on('dragend', function (e) {
+          let dragged = e.target.getLatLng();
+          let nearest = latlngs.reduce((prev, curr) =>
+            dragged.distanceTo(L.latLng(curr[0], curr[1])) < dragged.distanceTo(L.latLng(prev[0], prev[1])) ? curr : prev
+          );
+          let index = latlngs.findIndex(p => p[0] === nearest[0] && p[1] === nearest[1]);
+          let timestamp = routeData[index].properties.timestamp;
+          seekToTime(timestamp);
+        });
+
+        polyline.on('click', function(e) {
+          let nearest = latlngs.reduce((prev, curr) =>
+            e.latlng.distanceTo(L.latLng(curr[0], curr[1])) < e.latlng.distanceTo(L.latLng(prev[0], prev[1])) ? curr : prev
+          );
+          let index = latlngs.findIndex(p => p[0] === nearest[0] && p[1] === nearest[1]);
+          let timestamp = routeData[index].properties.timestamp;
+          seekToTime(timestamp);
+        });
+
+        // Start interval once data is loaded
+        setInterval(syncMarkerToVideo, 1000);
+      });
+
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('ytplayer', {
+        events: {
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+
+    function syncMarkerToVideo() {
+      if (!routeData || !player || typeof player.getCurrentTime !== 'function') return;
+      let time = Math.floor(player.getCurrentTime()) + (currentVideo === 2 ? 1697 : 0);
+      let match = routeData.find(f => f.properties.timestamp >= time);
+      if (match) {
+        let [lon, lat] = match.geometry.coordinates;
+        marker.setLatLng([lat, lon]);
+        document.getElementById('dist').innerText = match.properties.cum_distance_km.toFixed(2);
+        document.getElementById('speed').innerText = match.properties.speed_kph.toFixed(2);
+      }
+    }
+
+    function onPlayerStateChange(event) {
+      if (event.data === YT.PlayerState.ENDED && currentVideo === 1) {
+        currentVideo = 2;
+        player.loadVideoById("uSo2IoyOx10");
+      }
+    }
+
+    function seekToTime(time) {
+      if (time < 1697) {
+        if (currentVideo !== 1) {
+          currentVideo = 1;
+          player.loadVideoById("38JummjZeAs", time);
+        } else {
+          player.seekTo(time, true);
+        }
+      } else {
+        if (currentVideo !== 2) {
+          currentVideo = 2;
+          player.loadVideoById("uSo2IoyOx10", time - 1697);
+        } else {
+          player.seekTo(time - 1697, true);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
