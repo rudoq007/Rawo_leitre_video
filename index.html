@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -6,27 +5,47 @@
   <meta charset="utf-8" />
   <style>
     body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+
     #header {
       padding: 16px;
       background-color: #f4f4f4;
       border-bottom: 1px solid #ccc;
     }
+
     #header h1 {
       margin: 0;
       font-size: 22px;
     }
+
     #header p {
       margin: 4px 0 0;
       font-size: 14px;
       color: #555;
     }
+
     #content {
       display: flex;
+      flex-direction: column; /* changed from row to column */
       height: calc(100vh - 80px);
     }
-    #map { width: 60%; height: 100%; position: relative; }
-    #video { width: 40%; height: 100%; }
-    iframe { width: 100%; height: 100%; border: none; }
+
+    #video {
+      width: 100%;
+      height: 40%;
+      border-bottom: 2px solid #ccc;
+    }
+
+    #map {
+      width: 100%;
+      height: 60%;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
     #infoBox {
       position: fixed;
       bottom: 10px;
@@ -38,14 +57,12 @@
       box-shadow: 0 0 5px rgba(0,0,0,0.3);
       z-index: 1000;
     }
-  
+
     @media (max-width: 768px) {
       #content {
-        flex-direction: column;
         height: auto;
       }
-      #map, #video {
-        width: 100%;
+      #video, #map {
         height: 50vh;
       }
       #infoBox {
@@ -53,7 +70,8 @@
         left: 10px;
       }
     }
-    </style>
+  </style>
+
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
@@ -63,14 +81,16 @@
     <h1>Rawo–Leitre Road Video Map</h1>
     <p>This dashboard shows synchronized drone footage and the GPS-tracked route of the Rawo–Leitre access road, with cumulative distance visualized along the journey.</p>
   </div>
+
   <div id="content">
-    <div id="map"></div>
     <div id="video">
       <iframe id="ytplayer" type="text/html"
         src="https://www.youtube.com/embed/38JummjZeAs?enablejsapi=1&rel=0"
         frameborder="0" allowfullscreen></iframe>
     </div>
+    <div id="map"></div>
   </div>
+
   <div id="infoBox">
     <strong>Distance Travelled</strong><br>
     <span id="dist">0.00</span> km
@@ -115,7 +135,9 @@
         let [lon, lat] = match.geometry.coordinates;
         marker.setLatLng([lat, lon]);
         document.getElementById('dist').innerText = match.properties.cum_distance_km.toFixed(2);
-        document.getElementById('speed').innerText = match.properties.speed_kph.toFixed(2);
+        if (document.getElementById('speed')) {
+          document.getElementById('speed').innerText = match.properties.speed_kph.toFixed(2);
+        }
       }
     }
 
